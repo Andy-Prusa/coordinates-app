@@ -94,6 +94,12 @@
     border-radius: 16px; padding: 16px; margin-bottom: 14px;
     font-size: 14px; line-height: 1.5;
   }
+  .error-actions { display: flex; gap: 10px; margin-top: 14px; }
+  .error-actions button { flex: 1; text-align: center; }
+  button.primary {
+    background: var(--accent); border-color: transparent;
+    color: #0b1220; font-weight: 700; font-size: 14px; padding: 10px 14px;
+  }
   .hint { font-size: 12px; color: var(--muted); text-align: center; margin-top: 6px; line-height: 1.5; }
   .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
   .tab {
@@ -131,7 +137,13 @@
   </div>
 
   <div id="screenPosition">
-  <div class="error-box" id="errorBox" hidden><span id="errorText"></span><div style="margin-top:12px"><button id="retryBtn" type="button">Retry</button></div></div>
+  <div class="error-box" id="errorBox" hidden>
+    <span id="errorText"></span>
+    <div class="error-actions">
+      <button id="fixBtn" type="button" class="primary">Request location now</button>
+      <button id="retryBtn" type="button">Reload page</button>
+    </div>
+  </div>
 
   <div class="card">
     <div class="card-label">
@@ -220,33 +232,43 @@
     errorBox.hidden = true;
   }
 
+  function iosVersion() {
+    var m = navigator.userAgent.match(/OS ([0-9_]+) like Mac/i) || navigator.userAgent.match(/CPU OS ([0-9_]+)/i);
+    return m ? m[1].replace(/_/g, '.') : '?';
+  }
+
   function fail(err) {
     dot.classList.remove('live');
     dot.classList.add('error');
     statusEl.textContent = 'error';
     var msg;
     if (err.code === err.PERMISSION_DENIED) {
-      msg = 'Location permission is off. To fix: open this page in a normal Safari tab and tap Allow on the pop-up. Or: Settings → app list → “Coordinates” → Location → While Using the App, then fully close and reopen.';
+      msg = 'iOS has locked this site as “denied” — once that happens the pop-up never appears again. Reset it: Settings → Safari → scroll to the very bottom → “Clear History and Website Data”. Then open this page in a normal Safari tab (no “Private” label) and tap “Request location now”.';
     } else if (err.code === err.POSITION_UNAVAILABLE) {
       msg = 'Position unavailable. Move to open sky / away from thick walls and try again.';
     } else {
       msg = 'Timed out getting a fix. Try again — GPS can take a moment outdoors.';
     }
-    var diag = 'Diagnostics — secure context: ' + (window.isSecureContext ? 'yes' : 'NO') +
-      ' · error code: ' + (err.code != null ? err.code : '?') +
-      ' · ' + (navigator.userAgent.match(/OS_([0-9_]+) like Mac/i) || navigator.userAgent.match(/CPU OS ([0-9_]+)/i) || ['','?'])[1].replace(/_/g, '.') +
-      ' iOS · ' + new Date().toTimeString().slice(0, 5);
+    var diag = 'Diagnostics — ' +
+      (window.isSecureContext ? 'HTTPS OK' : 'NOT SECURE — needs HTTPS') +
+      ' · ' + (window.navigator.standalone === true ? 'home-screen app' : 'Safari tab') +
+      ' · error ' + (err.code != null ? err.code : '?') +
+      (err.message ? ' (“' + err.message + '”)' : '') +
+      ' · iOS ' + iosVersion();
+    var finish = function (state) {
+      document.getElementById('errorText').textContent = msg + ' ' + diag + ' · permission state: ' + state;
+      errorBox.hidden = false;
+    };
     if (navigator.permissions && navigator.permissions.query) {
-      navigator.permissions.query({ name: 'geolocation' }).then(function (p) {
-        diag += ' · permission state: ' + p.state;
-        document.getElementById('errorText').textContent = msg + '\n' + diag;
-      }, function () {
-        document.getElementById('errorText').textContent = msg + '\n' + diag;
-      });
-    } else {
-      document.getElementById('errorText').textContent = msg + '\n' + diag;
+      try {
+        navigator.permissions.query({ name: 'geolocation' }).then(
+          function (p) { finish(p.state); },
+          function () { finish('hidden by iOS'); }
+        );
+        return;
+      } catch (e) { /* fall through */ }
     }
-    errorBox.hidden = false;
+    finish('hidden by iOS');
   }
 
   if (!('geolocation' in navigator)) {
@@ -305,6 +327,22 @@
   tabSouth.addEventListener('click', function () { showScreen('south'); });
 
   document.getElementById('retryBtn').addEventListener('click', function () { location.reload(); });
+
+  document.getElementById('fixBtn').addEventListener('click', function () {
+    var btn = this;
+    btn.textContent = 'Requesting…';
+    navigator.geolocation.getCurrentPosition(
+      function (pos) {
+        render(pos);
+        btn.textContent = 'Location enabled';
+      },
+      function (err) {
+        btn.textContent = 'Request location now';
+        fail(err);
+      },
+      { enableHighAccuracy: true, maximumAge: 30000, timeout: 20000 }
+    );
+  });
 
   document.getElementById('copyBoth').addEventListener('click', function () {
     copy(
