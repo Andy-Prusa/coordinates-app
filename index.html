@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0f172a">
+<title>Coordinates</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --card: #1e293b;
+    --card-border: #334155;
+    --text: #f1f5f9;
+    --muted: #94a3b8;
+    --accent: #38bdf8;
+    --green: #4ade80;
+    --red: #f87171;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --card-border: #e2e8f0;
+      --text: #0f172a;
+      --muted: #64748b;
+      --accent: #0284c7;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: max(20px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+    -webkit-font-smoothing: antialiased;
+  }
+  .container { max-width: 520px; margin: 0 auto; }
+  header { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+  .dot {
+    width: 12px; height: 12px; border-radius: 50%;
+    background: var(--muted); flex-shrink: 0;
+    transition: background 0.3s;
+  }
+  .dot.live { background: var(--green); box-shadow: 0 0 0 0 rgba(74,222,128,0.6); animation: pulse 2s infinite; }
+  .dot.error { background: var(--red); }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(74,222,128,0.5); }
+    70% { box-shadow: 0 0 0 8px rgba(74,222,128,0); }
+    100% { box-shadow: 0 0 0 0 rgba(74,222,128,0); }
+  }
+  h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
+  .status { margin-left: auto; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+  .card-label {
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 12px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.08em; color: var(--muted); margin-bottom: 10px;
+  }
+  .value {
+    font-size: 26px; font-weight: 700; letter-spacing: -0.01em;
+    font-variant-numeric: tabular-nums; line-height: 1.2; word-break: break-all;
+  }
+  .value.dms { font-size: 22px; }
+  .sub { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 10px; }
+  button {
+    font: inherit; font-size: 13px; font-weight: 600;
+    color: var(--accent); background: transparent;
+    border: 1px solid var(--card-border); border-radius: 10px;
+    padding: 7px 14px; cursor: pointer; transition: transform 0.1s;
+  }
+  button:active { transform: scale(0.96); }
+  button.copied { color: var(--green); border-color: var(--green); }
+  .meta { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 13px; color: var(--muted); }
+  .meta b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .actions { display: flex; gap: 10px; }
+  .actions button { flex: 1; text-align: center; color: var(--text); }
+  a.action-link {
+    flex: 1; text-align: center; text-decoration: none;
+    border: 1px solid var(--card-border); border-radius: 10px;
+    padding: 7px 14px; font-size: 13px; font-weight: 600; color: var(--accent);
+  }
+  .error-box {
+    background: var(--card); border: 1px solid var(--red);
+    border-radius: 16px; padding: 16px; margin-bottom: 14px;
+    font-size: 14px; line-height: 1.5;
+  }
+  .hint { font-size: 12px; color: var(--muted); text-align: center; margin-top: 6px; line-height: 1.5; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+  .tab {
+    flex: 1; text-align: center; padding: 10px;
+    font: inherit; font-size: 14px; font-weight: 600;
+    color: var(--muted); background: var(--card);
+    border: 1px solid var(--card-border); border-radius: 12px; cursor: pointer;
+  }
+  .tab.active { color: var(--text); border-color: var(--accent); }
+  .south-screen {
+    height: calc(100dvh - 190px); min-height: 400px;
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+    background: var(--card); border: 1px solid var(--card-border); border-radius: 16px;
+    padding: 12px 0 18px;
+  }
+  .south-arrow { width: 46%; flex: 1; min-height: 0; display: block; }
+  .south-label {
+    font-size: 18px; font-weight: 800; letter-spacing: 0.4em;
+    color: var(--accent); margin-top: 12px; text-indent: 0.4em;
+  }
+  .placeholder { color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <span class="dot" id="dot"></span>
+    <h1>Coordinates</h1>
+    <span class="status" id="status">starting…</span>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" id="tabPosition" type="button">Position</button>
+    <button class="tab" id="tabSouth" type="button">South</button>
+  </div>
+
+  <div id="screenPosition">
+  <div class="error-box" id="errorBox" hidden></div>
+
+  <div class="card">
+    <div class="card-label">
+      <span>Latitude</span>
+      <button id="copyLat">Copy</button>
+    </div>
+    <div class="value" id="latDec"><span class="placeholder">—</span></div>
+    <div class="value dms" id="latDms" style="margin-top:6px"><span class="placeholder">—</span></div>
+  </div>
+
+  <div class="card">
+    <div class="card-label">
+      <span>Longitude</span>
+      <button id="copyLng">Copy</button>
+    </div>
+    <div class="value" id="lngDec"><span class="placeholder">—</span></div>
+    <div class="value dms" id="lngDms" style="margin-top:6px"><span class="placeholder">—</span></div>
+  </div>
+
+  <div class="card">
+    <div class="card-label"><span>Details</span></div>
+    <div class="meta">
+      <span>Accuracy <b id="accuracy">—</b></span>
+      <span>Altitude <b id="altitude">—</b></span>
+      <span>Updated <b id="updated">—</b></span>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button id="copyBoth">Copy Both</button>
+    <a class="action-link" id="mapLink" href="#" target="_blank" rel="noopener">Open in Maps</a>
+  </div>
+
+  <p class="hint">Updates live while open. Tip: in Safari, tap Share → “Add to Home Screen” to use it like an app.</p>
+  </div>
+
+  <div id="screenSouth" class="south-screen" hidden>
+    <svg class="south-arrow" viewBox="0 0 100 400" preserveAspectRatio="none" aria-label="Arrow pointing south">
+      <polygon points="50,396 6,308 34,308 34,8 66,8 66,308 94,308" fill="#38bdf8"/>
+    </svg>
+    <div class="south-label">SOUTH</div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var dot = document.getElementById('dot');
+  var statusEl = document.getElementById('status');
+  var errorBox = document.getElementById('errorBox');
+  var watchId = null;
+
+  function toDMS(deg, isLat) {
+    var dir = isLat ? (deg >= 0 ? 'N' : 'S') : (deg >= 0 ? 'E' : 'W');
+    var abs = Math.abs(deg);
+    var d = Math.floor(abs);
+    var mFloat = (abs - d) * 60;
+    var m = Math.floor(mFloat);
+    var s = (mFloat - m) * 60;
+    if (s >= 59.95) { s = 0; m += 1; }
+    if (m >= 60) { m = 0; d += 1; }
+    return d + '° ' + m + '′ ' + s.toFixed(2) + '″ ' + dir;
+  }
+
+  function setText(id, text) { document.getElementById(id).textContent = text; }
+
+  function fmtTime(d) {
+    function p(n) { return n < 10 ? '0' + n : '' + n; }
+    return p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+  }
+
+  function render(pos) {
+    var lat = pos.coords.latitude;
+    var lng = pos.coords.longitude;
+    setText('latDec', lat.toFixed(6) + '°');
+    setText('lngDec', lng.toFixed(6) + '°');
+    setText('latDms', toDMS(lat, true));
+    setText('lngDms', toDMS(lng, false));
+    setText('accuracy', '± ' + Math.round(pos.coords.accuracy) + ' m');
+    setText('altitude', pos.coords.altitude != null ? pos.coords.altitude.toFixed(1) + ' m' : '—');
+    setText('updated', fmtTime(pos.timestamp ? new Date(pos.timestamp) : new Date()));
+    document.getElementById('mapLink').href =
+      'https://www.google.com/maps?q=' + lat.toFixed(7) + ',' + lng.toFixed(7);
+    dot.classList.remove('error');
+    dot.classList.add('live');
+    statusEl.textContent = 'live';
+    errorBox.hidden = true;
+  }
+
+  function fail(err) {
+    dot.classList.remove('live');
+    dot.classList.add('error');
+    statusEl.textContent = 'error';
+    var msg;
+    if (err.code === err.PERMISSION_DENIED) {
+      msg = 'Location permission was denied. Enable it in Settings → Safari → Location, then reload.';
+    } else if (err.code === err.POSITION_UNAVAILABLE) {
+      msg = 'Position unavailable. Move to open sky / away from thick walls and try again.';
+    } else {
+      msg = 'Timed out getting a fix. Try again — GPS can take a moment outdoors.';
+    }
+    errorBox.textContent = msg;
+    errorBox.hidden = false;
+  }
+
+  if (!('geolocation' in navigator)) {
+    fail({ code: 99, message: 'This browser does not support geolocation.' });
+    return;
+  }
+
+  watchId = navigator.geolocation.watchPosition(render, fail, {
+    enableHighAccuracy: true,
+    maximumAge: 0,
+    timeout: 15000
+  });
+
+  function copy(text, btn) {
+    if (!text || text === '—') return;
+    function done() {
+      var orig = btn.textContent;
+      btn.textContent = 'Copied';
+      btn.classList.add('copied');
+      setTimeout(function () { btn.textContent = orig; btn.classList.remove('copied'); }, 1200);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done).catch(function () { fallbackCopy(text, done); });
+    } else {
+      fallbackCopy(text, done);
+    }
+  }
+  function fallbackCopy(text, done) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); done(); } catch (e) {}
+    document.body.removeChild(ta);
+  }
+
+  document.getElementById('copyLat').addEventListener('click', function () {
+    copy(document.getElementById('latDec').textContent + '\n' + document.getElementById('latDms').textContent, this);
+  });
+  document.getElementById('copyLng').addEventListener('click', function () {
+    copy(document.getElementById('lngDec').textContent + '\n' + document.getElementById('lngDms').textContent, this);
+  });
+  var tabPos = document.getElementById('tabPosition');
+  var tabSouth = document.getElementById('tabSouth');
+  var screenPos = document.getElementById('screenPosition');
+  var screenSouth = document.getElementById('screenSouth');
+  function showScreen(which) {
+    var south = which === 'south';
+    tabPos.classList.toggle('active', !south);
+    tabSouth.classList.toggle('active', south);
+    screenPos.hidden = south;
+    screenSouth.hidden = !south;
+  }
+  tabPos.addEventListener('click', function () { showScreen('position'); });
+  tabSouth.addEventListener('click', function () { showScreen('south'); });
+
+  document.getElementById('copyBoth').addEventListener('click', function () {
+    copy(
+      'Lat: ' + document.getElementById('latDec').textContent + ' (' + document.getElementById('latDms').textContent + ')\n' +
+      'Lng: ' + document.getElementById('lngDec').textContent + ' (' + document.getElementById('lngDms').textContent + ')',
+      this
+    );
+  });
+})();
+</script>
+</body>
+</html>
