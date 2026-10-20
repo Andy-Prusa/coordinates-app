@@ -131,7 +131,7 @@
   </div>
 
   <div id="screenPosition">
-  <div class="error-box" id="errorBox" hidden></div>
+  <div class="error-box" id="errorBox" hidden><span id="errorText"></span><div style="margin-top:12px"><button id="retryBtn" type="button">Retry</button></div></div>
 
   <div class="card">
     <div class="card-label">
@@ -226,13 +226,13 @@
     statusEl.textContent = 'error';
     var msg;
     if (err.code === err.PERMISSION_DENIED) {
-      msg = 'Location permission was denied. Enable it in Settings → Safari → Location, then reload.';
+      msg = 'Location permission is off. To fix: Settings → scroll down to the app list → “Coordinates” → Location → While Using the App, then fully close and reopen this app. In Safari instead: aA icon → Website Settings → Location → Allow.';
     } else if (err.code === err.POSITION_UNAVAILABLE) {
       msg = 'Position unavailable. Move to open sky / away from thick walls and try again.';
     } else {
       msg = 'Timed out getting a fix. Try again — GPS can take a moment outdoors.';
     }
-    errorBox.textContent = msg;
+    document.getElementById('errorText').textContent = msg;
     errorBox.hidden = false;
   }
 
@@ -290,6 +290,8 @@
   }
   tabPos.addEventListener('click', function () { showScreen('position'); });
   tabSouth.addEventListener('click', function () { showScreen('south'); });
+
+  document.getElementById('retryBtn').addEventListener('click', function () { location.reload(); });
 
   document.getElementById('copyBoth').addEventListener('click', function () {
     copy(
