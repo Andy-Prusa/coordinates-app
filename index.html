@@ -110,16 +110,34 @@
   }
   .tab.active { color: var(--text); border-color: var(--accent); }
   .south-screen {
-    height: calc(100dvh - 190px); min-height: 400px;
-    display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+    min-height: calc(100dvh - 190px);
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
     background: var(--card); border: 1px solid var(--card-border); border-radius: 16px;
-    padding: 12px 0 18px;
+    padding: 16px 12px 18px; gap: 14px;
   }
-  .south-arrow { width: 46%; flex: 1; min-height: 0; display: block; }
-  .south-label {
-    font-size: 18px; font-weight: 800; letter-spacing: 0.4em;
-    color: var(--accent); margin-top: 12px; text-indent: 0.4em;
+  .compass-wrap { width: min(84vw, 360px); }
+  #compassSvg { width: 100%; height: auto; display: block; }
+  .c-ring { fill: none; stroke: var(--card-border); stroke-width: 2; }
+  .c-tick.minor { stroke: var(--card-border); stroke-width: 2; }
+  .c-tick.major { stroke: var(--muted); stroke-width: 3; }
+  .c-card { font-size: 26px; font-weight: 700; fill: var(--muted); text-anchor: middle; dominant-baseline: central; }
+  .c-card.s { fill: var(--accent); font-size: 30px; }
+  .c-inter { font-size: 15px; font-weight: 600; fill: var(--muted); opacity: 0.75; text-anchor: middle; dominant-baseline: central; }
+  .c-lubber { fill: var(--accent); }
+  .c-head { fill: var(--accent); }
+  .c-tail { fill: var(--muted); opacity: 0.85; }
+  .c-scp-line { stroke: var(--text); stroke-width: 2.5; stroke-dasharray: 1.5 8; stroke-linecap: round; opacity: 0.9; }
+  .c-pivot { fill: var(--card); stroke: var(--muted); stroke-width: 3; }
+  .c-star-shape { fill: var(--text); }
+  .readouts { display: flex; gap: 10px; width: 100%; }
+  .readout {
+    flex: 1; background: var(--bg); border: 1px solid var(--card-border);
+    border-radius: 12px; padding: 10px 12px; text-align: center;
   }
+  .r-label { display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 4px; }
+  .r-value { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .south-screen #compassBtn { width: 100%; }
+  .south-screen .hint { margin-top: 0; }
   .placeholder { color: var(--muted); }
 </style>
 </head>
@@ -181,10 +199,42 @@
   </div>
 
   <div id="screenSouth" class="south-screen" hidden>
-    <svg class="south-arrow" viewBox="0 0 100 400" preserveAspectRatio="none" aria-label="Arrow pointing south">
-      <polygon points="50,396 6,308 34,308 34,8 66,8 66,308 94,308" fill="#38bdf8"/>
-    </svg>
-    <div class="south-label">SOUTH</div>
+    <div class="compass-wrap">
+      <svg id="compassSvg" viewBox="0 0 400 400" role="img" aria-label="Compass dial; needle points true south">
+        <circle class="c-ring" cx="200" cy="200" r="186"/>
+        <g id="cTicks"></g>
+        <text class="c-card" x="200" y="44">N</text>
+        <text class="c-card" x="356" y="200">E</text>
+        <text class="c-card s" x="200" y="356">S</text>
+        <text class="c-card" x="44" y="200">W</text>
+        <text class="c-inter" x="312" y="88">NE</text>
+        <text class="c-inter" x="312" y="312">SE</text>
+        <text class="c-inter" x="88" y="312">SW</text>
+        <text class="c-inter" x="88" y="88">NW</text>
+        <path class="c-lubber" d="M200 5 L191 25 L209 25 Z"/>
+        <g id="cNeedle">
+          <path class="c-tail" d="M200 374 L196 212 L204 212 Z"/>
+          <path class="c-head" d="M200 30 L192.5 212 L207.5 212 Z"/>
+          <line class="c-scp-line" x1="200" y1="194" x2="200" y2="70"/>
+          <circle class="c-pivot" cx="200" cy="200" r="8"/>
+          <path class="c-star-shape" transform="translate(200,52)" d="M0,-11 L2.6,-2.6 L11,0 L2.6,2.6 L0,11 L-2.6,2.6 L-11,0 L-2.6,-2.6 Z"/>
+        </g>
+      </svg>
+    </div>
+
+    <div class="readouts">
+      <div class="readout">
+        <span class="r-label">Heading</span>
+        <span class="r-value" id="headingVal">—</span>
+      </div>
+      <div class="readout">
+        <span class="r-label">SCP altitude</span>
+        <span class="r-value" id="scpAlt">—</span>
+      </div>
+    </div>
+
+    <button id="compassBtn" type="button" class="primary" hidden>Enable compass</button>
+    <p class="hint" id="compassHint"></p>
   </div>
 </div>
 
@@ -223,6 +273,8 @@
     setText('lngDms', toDMS(lng, false));
     setText('accuracy', '± ' + Math.round(pos.coords.accuracy) + ' m');
     setText('altitude', pos.coords.altitude != null ? pos.coords.altitude.toFixed(1) + ' m' : '—');
+    lastLat = lat;
+    updateScpAlt();
     setText('updated', fmtTime(pos.timestamp ? new Date(pos.timestamp) : new Date()));
     document.getElementById('mapLink').href =
       'https://www.google.com/maps?q=' + lat.toFixed(7) + ',' + lng.toFixed(7);
@@ -351,6 +403,108 @@
       this
     );
   });
+
+  /* ---- South screen: working compass, needle points true south ---- */
+  var lastLat = null;
+  var smoothH = null;
+  var gotHeading = false;
+  var needleEl = document.getElementById('cNeedle');
+  var headingValEl = document.getElementById('headingVal');
+  var scpAltEl = document.getElementById('scpAlt');
+  var compassBtn = document.getElementById('compassBtn');
+  var compassHint = document.getElementById('compassHint');
+
+  needleEl.setAttribute('transform', 'rotate(180 200 200)'); // default: pointing down = south on screen
+
+  // dial ticks every 10°, majors every 30°
+  (function () {
+    var parts = [];
+    for (var deg = 0; deg < 360; deg += 10) {
+      var rad = deg * Math.PI / 180;
+      var major = deg % 30 === 0;
+      var r1 = major ? 162 : 172;
+      parts.push('<line x1="' + (200 + r1 * Math.sin(rad)).toFixed(1) +
+        '" y1="' + (200 - r1 * Math.cos(rad)).toFixed(1) +
+        '" x2="' + (200 + 184 * Math.sin(rad)).toFixed(1) +
+        '" y2="' + (200 - 184 * Math.cos(rad)).toFixed(1) +
+        '" class="c-tick ' + (major ? 'major' : 'minor') + '"/>');
+    }
+    document.getElementById('cTicks').innerHTML = parts.join('');
+  })();
+
+  function cardinal(h) {
+    var names = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+    var hh = ((h % 360) + 360) % 360;
+    return names[Math.round(hh / 22.5) % 16];
+  }
+
+  function drawCompass() {
+    // needle drawn pointing up; rotate (180 - heading) so the tip lands on true south
+    var a = (180 - smoothH + 360) % 360;
+    needleEl.setAttribute('transform', 'rotate(' + a.toFixed(1) + ' 200 200)');
+    var h = ((Math.round(smoothH) % 360) + 360) % 360;
+    headingValEl.textContent = h + '° ' + cardinal(h);
+  }
+
+  function refreshHint() {
+    var alt = lastLat != null ? Math.round(Math.abs(lastLat)) : null;
+    var scp = 'Aim the needle at the sky, then tilt up ≈ ' + (alt != null ? alt + '°' : 'your latitude') +
+      ' — the faint star σ Octantis sits ~1° from the South Celestial Pole.';
+    compassHint.textContent = (gotHeading ? 'Live compass. ' : 'Waiting for compass… ') + scp;
+  }
+
+  function updateScpAlt() {
+    if (lastLat == null) { scpAltEl.textContent = '—'; return; }
+    scpAltEl.textContent = '≈ ' + Math.round(Math.abs(lastLat)) + '° above horizon';
+    refreshHint();
+  }
+
+  function onOrientation(e) {
+    var h = null;
+    if (typeof e.webkitCompassHeading === 'number' && isFinite(e.webkitCompassHeading)) {
+      h = e.webkitCompassHeading; // iOS home-screen app, true-north reference
+    } else if (typeof e.alpha === 'number' && isFinite(e.alpha)) {
+      var angle = 0;
+      try {
+        angle = (screen.orientation && typeof screen.orientation.angle === 'number')
+          ? screen.orientation.angle
+          : (window.orientation || 0);
+      } catch (err) { /* stay 0 */ }
+      h = (((360 - e.alpha + angle) % 360) + 360) % 360; // Safari tab fallback
+    }
+    if (h == null) return;
+    if (!gotHeading) {
+      gotHeading = true;
+      compassBtn.hidden = true;
+      refreshHint();
+    }
+    if (smoothH == null) {
+      smoothH = h;
+    } else {
+      var d = ((h - smoothH + 540) % 360) - 180; // shortest path, no 359°→0° spin
+      smoothH = (smoothH + d * 0.3 + 360) % 360;
+    }
+    drawCompass();
+  }
+
+  window.addEventListener('deviceorientation', onOrientation, true);
+
+  compassBtn.addEventListener('click', function () {
+    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+      DeviceOrientationEvent.requestPermission().then(
+        function (res) {
+          if (res !== 'granted') compassHint.textContent = 'Compass permission declined — tap Enable compass and choose Allow.';
+        },
+        function () { compassHint.textContent = 'Could not start the compass — tap Enable compass again.';
+        }
+      );
+    }
+  });
+
+  refreshHint();
+  setTimeout(function () {
+    if (!gotHeading) compassBtn.hidden = false;
+  }, 1500);
 })();
 </script>
 </body>
