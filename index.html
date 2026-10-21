@@ -459,7 +459,17 @@
     refreshHint();
   }
 
+  // ---- Diagnostics: track what the device actually reports ----
+  var probe = { events: 0, hasAlpha: false, hasTrueHeading: false };
+  var probed = false;
+  var isStandalone = (typeof navigator.standalone === 'boolean') ? navigator.standalone
+    : (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+  var hasPermAPI = typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function';
+
   function onOrientation(e) {
+    probe.events++;
+    if (typeof e.alpha === 'number' && isFinite(e.alpha)) probe.hasAlpha = true;
+    if (typeof e.webkitCompassHeading === 'number' && isFinite(e.webkitCompassHeading)) probe.hasTrueHeading = true;
     var h = null;
     if (typeof e.webkitCompassHeading === 'number' && isFinite(e.webkitCompassHeading)) {
       h = e.webkitCompassHeading; // iOS home-screen app, true-north reference
@@ -489,21 +499,49 @@
 
   window.addEventListener('deviceorientation', onOrientation, true);
 
+  function describeProbe(prefix) {
+    var bit;
+    if (probe.events === 0) bit = 'no motion events (permission not active)';
+    else if (probe.hasTrueHeading) bit = 'true compass heading OK';
+    else if (probe.hasAlpha) bit = 'magnetic heading only — true south may be a few degrees off';
+    else bit = 'events fire but sensor values blocked';
+    return (prefix ? prefix + ' ' : '') +
+      'Diagnostics: ' + bit + ' · ' + probe.events + ' events · '
+      + (isStandalone ? 'home-screen app' : 'Safari tab') + '.';
+  }
+
+  function runProbe(note) {
+    probed = true;
+    probe.events = 0; probe.hasAlpha = false; probe.hasTrueHeading = false;
+    if (!gotHeading) compassHint.textContent = note || 'Waiting for compass…';
+    setTimeout(function () {
+      if (!gotHeading) compassHint.textContent = describeProbe(note);
+    }, 4000);
+  }
+
   compassBtn.addEventListener('click', function () {
-    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+    if (hasPermAPI) {
       DeviceOrientationEvent.requestPermission().then(
         function (res) {
-          if (res !== 'granted') compassHint.textContent = 'Compass permission declined — tap Enable compass and choose Allow.';
+          if (res === 'granted') runProbe('Granted — starting…');
+          else runProbe('Permission declined (or blocked). If no prompt appeared, reset Motion & Orientation in iPhone Settings → Coordinates, then tap again.');
         },
-        function () { compassHint.textContent = 'Could not start the compass — tap Enable compass again.';
+        function (err) {
+          runProbe('Permission request failed' + (err && err.message ? ' (' + err.message + ')' : '') + '.');
         }
       );
+    } else {
+      runProbe('This browser has no motion-permission API. '
+        + (isStandalone ? 'Try tapping again.' : 'Open the app from your Home Screen instead of a Safari tab.'));
     }
   });
 
   refreshHint();
   setTimeout(function () {
-    if (!gotHeading) compassBtn.hidden = false;
+    if (!gotHeading) {
+      compassBtn.hidden = false;
+      if (!probed) runProbe('Waiting for compass…');
+    }
   }, 1500);
 })();
 </script>
