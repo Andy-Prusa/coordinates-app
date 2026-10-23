@@ -139,6 +139,47 @@
   .south-screen #compassBtn { width: 100%; }
   .south-screen .hint { margin-top: 0; }
   .placeholder { color: var(--muted); }
+
+  /* ---- Stars tab ---- */
+  .star-list { display: flex; flex-direction: column; gap: 8px; }
+  .star-row {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--card); border: 1px solid var(--card-border);
+    border-radius: 12px; padding: 12px 14px; cursor: pointer;
+    transition: transform 0.1s;
+  }
+  .star-row:active { transform: scale(0.98); }
+  .star-row .s-name { font-size: 16px; font-weight: 700; }
+  .star-row .s-const { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .star-row .s-status { font-size: 12px; font-weight: 600; color: var(--muted); text-align: right; line-height: 1.4; white-space: nowrap; }
+  .stars-hint { font-size: 12px; color: var(--muted); text-align: center; margin-top: 14px; line-height: 1.6; }
+  .guide {
+    min-height: calc(100dvh - 190px);
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+    background: var(--card); border: 1px solid var(--card-border); border-radius: 16px;
+    padding: 16px 12px 18px; gap: 14px;
+  }
+  .guide h2 { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
+  .guide .g-sub { font-size: 13px; color: var(--muted); }
+  .g-arrow-line { stroke: var(--accent); stroke-width: 3; stroke-linecap: round; }
+  .gauge { width: 100%; max-width: 320px; display: flex; flex-direction: column; align-items: center; }
+  .gauge-track {
+    position: relative; width: 10px; height: 180px;
+    background: var(--bg); border: 1px solid var(--card-border);
+    border-radius: 5px;
+  }
+  .gauge-target { position: absolute; left: -8px; right: -8px; border-top: 2px solid var(--green); }
+  .gauge-dot {
+    position: absolute; left: -6px; width: 18px; height: 18px; border-radius: 50%;
+    background: var(--accent); transform: translateY(-50%);
+    transition: bottom 0.12s linear;
+  }
+  .gauge-dot.ok { background: var(--green); box-shadow: 0 0 0 3px rgba(74,222,128,0.35); }
+  .gauge-labels { display: flex; justify-content: space-between; width: 100%; font-size: 11px; color: var(--muted); margin-top: 6px; }
+  .gauge-status { font-size: 13px; font-weight: 700; margin-top: 8px; min-height: 18px; text-align: center; }
+  .gauge-status.ok { color: var(--green); }
+  .gauge-status.bad { color: var(--muted); }
+  #gTurn.ok { color: var(--green); }
 </style>
 </head>
 <body>
@@ -152,6 +193,7 @@
   <div class="tabs">
     <button class="tab active" id="tabPosition" type="button">Position</button>
     <button class="tab" id="tabSouth" type="button">South</button>
+    <button class="tab" id="tabStars" type="button">Stars</button>
   </div>
 
   <div id="screenPosition">
@@ -236,6 +278,55 @@
     <button id="compassBtn" type="button" class="primary" hidden>Enable compass</button>
     <p class="hint" id="compassHint"></p>
   </div>
+
+  <div id="screenStars" hidden>
+    <div id="starListWrap">
+      <div class="star-list" id="starList"></div>
+      <p class="stars-hint" id="starsHint"></p>
+    </div>
+    <div id="starGuide" class="guide" hidden>
+      <h2 id="gName">—</h2>
+      <p class="g-sub" id="gSub"></p>
+      <div class="compass-wrap">
+        <svg id="guideSvg" viewBox="0 0 400 400" role="img" aria-label="Guide dial; arrow points to the star">
+          <circle class="c-ring" cx="200" cy="200" r="186"/>
+          <g id="gTicks"></g>
+          <text class="c-card" x="200" y="44">N</text>
+          <text class="c-card" x="356" y="200">E</text>
+          <text class="c-card" x="200" y="356">S</text>
+          <text class="c-card" x="44" y="200">W</text>
+          <path class="c-lubber" d="M200 5 L191 25 L209 25 Z"/>
+          <g id="gArrow">
+            <path class="c-tail" d="M200 374 L196 212 L204 212 Z"/>
+            <path class="c-head" d="M200 30 L192.5 212 L207.5 212 Z"/>
+            <line class="g-arrow-line" x1="200" y1="194" x2="200" y2="70"/>
+            <circle class="c-pivot" cx="200" cy="200" r="8"/>
+            <path class="c-star-shape" transform="translate(200,52)" d="M0,-11 L2.6,-2.6 L11,0 L2.6,2.6 L0,11 L-2.6,2.6 L-11,0 L-2.6,-2.6 Z"/>
+          </g>
+        </svg>
+      </div>
+      <div class="readouts">
+        <div class="readout">
+          <span class="r-label">Heading</span>
+          <span class="r-value" id="gHeading">—</span>
+        </div>
+        <div class="readout">
+          <span class="r-label">Turn</span>
+          <span class="r-value" id="gTurn">—</span>
+        </div>
+      </div>
+      <div class="gauge">
+        <div class="gauge-track">
+          <div class="gauge-target" id="gTarget"></div>
+          <div class="gauge-dot" id="gDot"></div>
+        </div>
+        <div class="gauge-labels"><span>flat</span><span>straight up</span></div>
+        <p class="gauge-status bad" id="gStatus">tilt the phone up to the star</p>
+      </div>
+      <button id="gBack" type="button" class="primary">← Back to list</button>
+      <p class="hint">Walk until the arrow points up, then tilt up until the green dot meets the line.</p>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -274,6 +365,8 @@
     setText('accuracy', '± ' + Math.round(pos.coords.accuracy) + ' m');
     setText('altitude', pos.coords.altitude != null ? pos.coords.altitude.toFixed(1) + ' m' : '—');
     lastLat = lat;
+    lastLng = lng;
+    refreshStars();
     updateScpAlt();
     setText('updated', fmtTime(pos.timestamp ? new Date(pos.timestamp) : new Date()));
     document.getElementById('mapLink').href =
@@ -366,17 +459,22 @@
   });
   var tabPos = document.getElementById('tabPosition');
   var tabSouth = document.getElementById('tabSouth');
+  var tabStars = document.getElementById('tabStars');
   var screenPos = document.getElementById('screenPosition');
   var screenSouth = document.getElementById('screenSouth');
+  var screenStars = document.getElementById('screenStars');
   function showScreen(which) {
-    var south = which === 'south';
-    tabPos.classList.toggle('active', !south);
-    tabSouth.classList.toggle('active', south);
-    screenPos.hidden = south;
-    screenSouth.hidden = !south;
+    tabPos.classList.toggle('active', which === 'position');
+    tabSouth.classList.toggle('active', which === 'south');
+    tabStars.classList.toggle('active', which === 'stars');
+    screenPos.hidden = which !== 'position';
+    screenSouth.hidden = which !== 'south';
+    screenStars.hidden = which !== 'stars';
+    if (which === 'stars') refreshStars();
   }
   tabPos.addEventListener('click', function () { showScreen('position'); });
   tabSouth.addEventListener('click', function () { showScreen('south'); });
+  tabStars.addEventListener('click', function () { showScreen('stars'); });
 
   document.getElementById('retryBtn').addEventListener('click', function () { location.reload(); });
 
@@ -406,6 +504,10 @@
 
   /* ---- South screen: working compass, needle points true south ---- */
   var lastLat = null;
+  var lastLng = null;
+  var lastBeta = null;
+  var guideIdx = -1;
+  var starPos = [];
   var smoothH = null;
   var gotHeading = false;
   var needleEl = document.getElementById('cNeedle');
@@ -470,6 +572,10 @@
     probe.events++;
     if (typeof e.alpha === 'number' && isFinite(e.alpha)) probe.hasAlpha = true;
     if (typeof e.webkitCompassHeading === 'number' && isFinite(e.webkitCompassHeading)) probe.hasTrueHeading = true;
+    if (typeof e.beta === 'number' && isFinite(e.beta)) {
+      lastBeta = e.beta;
+      if (guideIdx >= 0) updateGauge();
+    }
     var h = null;
     if (typeof e.webkitCompassHeading === 'number' && isFinite(e.webkitCompassHeading)) {
       h = e.webkitCompassHeading; // iOS home-screen app, true-north reference
@@ -495,6 +601,7 @@
       smoothH = (smoothH + d * 0.3 + 360) % 360;
     }
     drawCompass();
+    if (guideIdx >= 0) refreshGuide();
   }
 
   window.addEventListener('deviceorientation', onOrientation, true);
@@ -543,6 +650,200 @@
       if (!probed) runProbe('Waiting for compass…');
     }
   }, 1500);
+
+  /* ---- Stars: 10 brightest, guided by the working compass ---- */
+  var STARS = [
+    { name: 'Sirius',     cons: 'Canis Major', mag: -1.46, ra: 101.288, dec: -16.716 },
+    { name: 'Canopus',    cons: 'Carina',      mag: -0.74, ra: 95.988,  dec: -52.696 },
+    { name: 'Arcturus',   cons: 'Boötes',      mag: -0.05, ra: 213.918, dec: 19.180  },
+    { name: 'Vega',       cons: 'Lyra',        mag: 0.03,  ra: 279.235, dec: 38.784  },
+    { name: 'Capella',    cons: 'Auriga',      mag: 0.08,  ra: 79.176,  dec: 45.998  },
+    { name: 'Rigel',      cons: 'Orion',       mag: 0.13,  ra: 78.635,  dec: -8.202  },
+    { name: 'Procyon',    cons: 'Canis Minor', mag: 0.34,  ra: 114.826, dec: 5.225   },
+    { name: 'Achernar',   cons: 'Eridanus',    mag: 0.46,  ra: 24.428,  dec: -57.237 },
+    { name: 'Betelgeuse', cons: 'Orion',       mag: 0.50,  ra: 88.800,  dec: 7.407   },
+    { name: 'Hadar',      cons: 'Centaurus',   mag: 0.61,  ra: 210.956, dec: -60.373 }
+  ];
+
+  function radian(d) { return d * Math.PI / 180; }
+  function degrees(r) { return r * 180 / Math.PI; }
+  function mod360(a) { return ((a % 360) + 360) % 360; }
+
+  function lstDeg() {
+    if (lastLng == null) return null;
+    var now = new Date();
+    var utcMs = now.getTime() - now.getTimezoneOffset() * 60000;
+    var jd = utcMs / 86400000 + 2440587.5;
+    return mod360(280.46061837 + 360.98564736629 * (jd - 2451545) + lastLng);
+  }
+
+  function starAltAz(star, lst) {
+    var H = radian(lst - star.ra);
+    var d = radian(star.dec);
+    var l = radian(lastLat);
+    var sinAlt = Math.sin(d) * Math.sin(l) + Math.cos(d) * Math.cos(l) * Math.cos(H);
+    var alt = degrees(Math.asin(Math.max(-1, Math.min(1, sinAlt))));
+    var az = Math.atan2(Math.sin(H), Math.cos(H) * Math.sin(l) - Math.tan(d) * Math.cos(l));
+    return { alt: alt, az: mod360(degrees(az) + 180) };
+  }
+
+  function starStatus(star, lst) {
+    if (lastLat == null) return { alt: null, az: null, note: null };
+    var p = starAltAz(star, lst);
+    var note = null;
+    var t = -Math.tan(radian(lastLat)) * Math.tan(radian(star.dec));
+    if (t >= 1) note = 'up all night';
+    else if (t <= -1) note = 'never rises';
+    else {
+      var ha0 = Math.acos(t);
+      var riseLST = mod360(star.ra - degrees(ha0));
+      var hoursTo = ((riseLST - lst + 360) % 360) / 15.041068;
+      if (p.alt <= 0) note = hoursTo < 0.5 ? 'rising soon' : 'rises in ~' + hoursTo.toFixed(1) + ' h';
+    }
+    return { alt: p.alt, az: p.az, note: note };
+  }
+
+  var starListWrap = document.getElementById('starListWrap');
+  var starGuideEl = document.getElementById('starGuide');
+  var starListEl = document.getElementById('starList');
+  var starsHintEl = document.getElementById('starsHint');
+  var gNameEl = document.getElementById('gName');
+  var gSubEl = document.getElementById('gSub');
+  var gArrowEl = document.getElementById('gArrow');
+  var gHeadingEl = document.getElementById('gHeading');
+  var gTurnEl = document.getElementById('gTurn');
+  var gTarget = document.getElementById('gTarget');
+  var gDot = document.getElementById('gDot');
+  var gStatus = document.getElementById('gStatus');
+
+  function buildStarList() {
+    var lst = lstDeg();
+    starPos = [];
+    var parts = [];
+    for (var i = 0; i < STARS.length; i++) {
+      var s = STARS[i];
+      var st = starStatus(s, lst);
+      starPos.push({ alt: st.alt, az: st.az });
+      var right;
+      if (st.alt == null) {
+        right = '—';
+      } else if (st.alt > 0) {
+        right = Math.round(st.alt) + '° up · ' + Math.round(st.az) + '° az';
+      } else {
+        right = 'below horizon<br>' + (st.note || '');
+      }
+      parts.push(
+        '<div class="star-row" data-i="' + i + '">' +
+          '<div style="flex:1;min-width:0">' +
+            '<div class="s-name">' + s.name + '</div>' +
+            '<span class="s-const">' + s.cons + ' · mag ' + s.mag.toFixed(2) + '</span>' +
+          '</div>' +
+          '<div class="s-status">' + right + '</div>' +
+        '</div>'
+      );
+    }
+    starListEl.innerHTML = parts.join('');
+    starsHintEl.textContent = lastLat == null
+      ? 'No location yet — statuses show “—”. Fix location on the Position tab, then tap a star.'
+      : 'Tap a star. Walk until the arrow points up, then tilt the phone up until the green dot meets the line.';
+  }
+
+  function openGuide(i) {
+    guideIdx = i;
+    var s = STARS[i];
+    gNameEl.textContent = s.name;
+    gSubEl.textContent = s.cons + ' · magnitude ' + s.mag.toFixed(2);
+    starListWrap.hidden = true;
+    starGuideEl.hidden = false;
+    refreshGuide();
+  }
+
+  function closeGuide() {
+    guideIdx = -1;
+    starListWrap.hidden = false;
+    starGuideEl.hidden = true;
+  }
+
+  function refreshGuide() {
+    if (guideIdx < 0) return;
+    var s = STARS[guideIdx];
+    var lst = lstDeg();
+    if (lastLat == null || lst == null) {
+      gStatus.textContent = 'No location — fix it on the Position tab first.';
+      gStatus.classList.remove('ok'); gStatus.classList.add('bad');
+      gTurnEl.textContent = '—';
+      gTurnEl.classList.remove('ok');
+      return;
+    }
+    var p = starAltAz(s, lst);
+    starPos[guideIdx] = { alt: p.alt, az: p.az };
+    var targetFrac = Math.max(0, Math.min(90, p.alt)) / 90 * 100;
+    gTarget.style.bottom = targetFrac + '%';
+    if (smoothH != null) {
+      var a = mod360(p.az - smoothH);
+      gArrowEl.setAttribute('transform', 'rotate(' + a.toFixed(1) + ' 200 200)');
+      var h = mod360(Math.round(smoothH));
+      gHeadingEl.textContent = h + '° ' + cardinal(h);
+      var d = ((p.az - h + 540) % 360) - 180;
+      if (Math.abs(d) < 8) {
+        gTurnEl.textContent = 'facing it ✓';
+        gTurnEl.classList.add('ok');
+      } else {
+        gTurnEl.textContent = (d > 0 ? 'turn right ' : 'turn left ') + Math.round(Math.abs(d)) + '°';
+        gTurnEl.classList.remove('ok');
+      }
+    } else {
+      gTurnEl.textContent = 'waiting for compass…';
+      gTurnEl.classList.remove('ok');
+    }
+    updateGauge();
+  }
+
+  function updateGauge() {
+    if (guideIdx < 0 || lastBeta == null) return;
+    var p = starPos[guideIdx];
+    if (!p || p.alt == null) return;
+    var beta = Math.max(0, Math.min(90, lastBeta));
+    var alt = Math.max(0, Math.min(90, p.alt));
+    gDot.style.bottom = (beta / 90 * 100) + '%';
+    var ok = Math.abs(lastBeta - p.alt) < 6;
+    gDot.classList.toggle('ok', ok);
+    gStatus.classList.toggle('ok', ok);
+    gStatus.classList.toggle('bad', !ok);
+    gStatus.textContent = ok
+      ? 'TILT OK — look up at ' + Math.round(p.alt) + '°'
+      : (beta < p.alt ? 'tilt up more' : 'tilt down a bit');
+  }
+
+  function refreshStars() {
+    if (screenStars.hidden) return;
+    if (guideIdx >= 0) refreshGuide();
+    else buildStarList();
+  }
+
+  // guide dial ticks (same pattern as #cTicks)
+  (function () {
+    var parts = [];
+    for (var deg = 0; deg < 360; deg += 10) {
+      var r = deg * Math.PI / 180;
+      var major = deg % 30 === 0;
+      var r1 = major ? 162 : 172;
+      parts.push('<line x1="' + (200 + r1 * Math.sin(r)).toFixed(1) +
+        '" y1="' + (200 - r1 * Math.cos(r)).toFixed(1) +
+        '" x2="' + (200 + 184 * Math.sin(r)).toFixed(1) +
+        '" y2="' + (200 - 184 * Math.cos(r)).toFixed(1) +
+        '" class="c-tick ' + (major ? 'major' : 'minor') + '"/>');
+    }
+    document.getElementById('gTicks').innerHTML = parts.join('');
+  })();
+
+  starListEl.addEventListener('click', function (e) {
+    var row = e.target && e.target.closest ? e.target.closest('.star-row') : null;
+    if (row) openGuide(parseInt(row.getAttribute('data-i'), 10));
+  });
+  document.getElementById('gBack').addEventListener('click', closeGuide);
+
+  setInterval(refreshStars, 30000);
 })();
 </script>
 </body>
