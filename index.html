@@ -653,6 +653,7 @@
 
   /* ---- Stars: 10 brightest, guided by the working compass ---- */
   var STARS = [
+    { name: 'South Celestial Pole', pole: true },
     { name: 'Sirius',     cons: 'Canis Major', mag: -1.46, ra: 101.288, dec: -16.716 },
     { name: 'Canopus',    cons: 'Carina',      mag: -0.74, ra: 95.988,  dec: -52.696 },
     { name: 'Arcturus',   cons: 'Boötes',      mag: -0.05, ra: 213.918, dec: 19.180  },
@@ -678,6 +679,7 @@
   }
 
   function starAltAz(star, lst) {
+    if (star.pole) return { alt: -lastLat, az: 180 };
     var H = radian(lst - star.ra);
     var d = radian(star.dec);
     var l = radian(lastLat);
@@ -689,6 +691,7 @@
 
   function starStatus(star, lst) {
     if (lastLat == null) return { alt: null, az: null, note: null };
+    if (star.pole) return { alt: -lastLat, az: 180, note: -lastLat > 0 ? 'up all night' : 'below horizon' };
     var p = starAltAz(star, lst);
     var note = null;
     var t = -Math.tan(radian(lastLat)) * Math.tan(radian(star.dec));
@@ -728,7 +731,7 @@
       if (st.alt == null) {
         right = '—';
       } else if (st.alt > 0) {
-        right = Math.round(st.alt) + '° up · ' + Math.round(st.az) + '° az';
+        right = Math.round(st.alt) + '° up · ' + (s.pole ? 'due south' : Math.round(st.az) + '° az');
       } else {
         right = 'below horizon<br>' + (st.note || '');
       }
@@ -736,7 +739,7 @@
         '<div class="star-row" data-i="' + i + '">' +
           '<div style="flex:1;min-width:0">' +
             '<div class="s-name">' + s.name + '</div>' +
-            '<span class="s-const">' + s.cons + ' · mag ' + s.mag.toFixed(2) + '</span>' +
+            '<span class="s-const">' + (s.pole ? 'fixed point in the sky · faint star σ Octantis sits at it' : s.cons + ' · mag ' + s.mag.toFixed(2)) + '</span>' +
           '</div>' +
           '<div class="s-status">' + right + '</div>' +
         '</div>'
@@ -745,14 +748,16 @@
     starListEl.innerHTML = parts.join('');
     starsHintEl.textContent = lastLat == null
       ? 'No location yet — statuses show “—”. Fix location on the Position tab, then tap a star.'
-      : 'Tap a star. Walk until the arrow points up, then tilt the phone up until the green dot meets the line.';
+      : 'Tap the pole or a star. Walk until the arrow points up, then tilt the phone up until the green dot meets the line.';
   }
 
   function openGuide(i) {
     guideIdx = i;
     var s = STARS[i];
     gNameEl.textContent = s.name;
-    gSubEl.textContent = s.cons + ' · magnitude ' + s.mag.toFixed(2);
+    gSubEl.textContent = s.pole
+      ? 'fixed point in the sky — the faint star σ Octantis (mag ~5.4) sits right at it'
+      : s.cons + ' · magnitude ' + s.mag.toFixed(2);
     starListWrap.hidden = true;
     starGuideEl.hidden = false;
     refreshGuide();
