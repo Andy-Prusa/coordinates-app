@@ -690,20 +690,21 @@
   }
 
   function starStatus(star, lst) {
-    if (lastLat == null) return { alt: null, az: null, note: null };
-    if (star.pole) return { alt: -lastLat, az: 180, note: -lastLat > 0 ? 'up all night' : 'below horizon' };
+    if (lastLat == null) return { alt: null, az: null, note: null, hoursTo: null };
+    if (star.pole) return { alt: -lastLat, az: 180, note: -lastLat > 0 ? 'up all night' : 'below horizon', hoursTo: null };
     var p = starAltAz(star, lst);
     var note = null;
+    var hoursTo = null;
     var t = -Math.tan(radian(lastLat)) * Math.tan(radian(star.dec));
     if (t >= 1) note = 'up all night';
     else if (t <= -1) note = 'never rises';
     else {
       var ha0 = Math.acos(t);
       var riseLST = mod360(star.ra - degrees(ha0));
-      var hoursTo = ((riseLST - lst + 360) % 360) / 15.041068;
+      hoursTo = ((riseLST - lst + 360) % 360) / 15.041068;
       if (p.alt <= 0) note = hoursTo < 0.5 ? 'rising soon' : 'rises in ~' + hoursTo.toFixed(1) + ' h';
     }
-    return { alt: p.alt, az: p.az, note: note };
+    return { alt: p.alt, az: p.az, note: note, hoursTo: hoursTo };
   }
 
   var starListWrap = document.getElementById('starListWrap');
@@ -721,19 +722,37 @@
 
   function buildStarList() {
     var lst = lstDeg();
+    var st = [];
+    for (var i = 0; i < STARS.length; i++) st.push(starStatus(STARS[i], lst));
+    var order = [];
+    for (var i = 0; i < STARS.length; i++) order.push(i);
+    if (lastLat != null && lst != null) {
+      order.sort(function (a, b) {
+        if (STARS[a].pole !== STARS[b].pole) return STARS[a].pole ? -1 : 1; // pole stays on top
+        var sa = st[a], sb = st[b];
+        var av = sa.alt > 0, bv = sb.alt > 0;
+        if (av !== bv) return av ? -1 : 1;
+        if (av) return sb.alt - sa.alt; // up now: highest first
+        var ha = sa.hoursTo == null ? 999 : sa.hoursTo; // below: soonest to rise first
+        var hb = sb.hoursTo == null ? 999 : sb.hoursTo;
+        if (ha !== hb) return ha - hb;
+        return a - b;
+      });
+    }
     starPos = [];
     var parts = [];
-    for (var i = 0; i < STARS.length; i++) {
+    for (var k = 0; k < order.length; k++) {
+      var i = order[k];
       var s = STARS[i];
-      var st = starStatus(s, lst);
-      starPos.push({ alt: st.alt, az: st.az });
+      var cur = st[i];
+      starPos[i] = { alt: cur.alt, az: cur.az };
       var right;
-      if (st.alt == null) {
+      if (cur.alt == null) {
         right = '—';
-      } else if (st.alt > 0) {
-        right = Math.round(st.alt) + '° up · ' + (s.pole ? 'due south' : Math.round(st.az) + '° az');
+      } else if (cur.alt > 0) {
+        right = Math.round(cur.alt) + '° up · ' + (s.pole ? 'due south' : Math.round(cur.az) + '° az');
       } else {
-        right = 'below horizon<br>' + (st.note || '');
+        right = 'below horizon<br>' + (cur.note || '');
       }
       parts.push(
         '<div class="star-row" data-i="' + i + '">' +
@@ -748,7 +767,7 @@
     starListEl.innerHTML = parts.join('');
     starsHintEl.textContent = lastLat == null
       ? 'No location yet — statuses show “—”. Fix location on the Position tab, then tap a star.'
-      : 'Tap the pole or a star. Walk until the arrow points up, then tilt the phone up until the green dot meets the line.';
+      : 'Reorders itself with the sky — up now first, then what rises soonest. Tap the pole or a star to get guided.';
   }
 
   function openGuide(i) {
